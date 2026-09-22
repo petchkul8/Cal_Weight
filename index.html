@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบคำนวณและบันทึกพลังงาน + โปรตีนประจำสัปดาห์</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --protein-color: #0284c7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Sarabun', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .full-width {
+                grid-column: span 2;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        button.btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        button.btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .stat-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .day-selector-container {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn-day {
+            flex: 1;
+            min-width: 70px;
+            padding: 8px 6px;
+            font-size: 0.85rem;
+            border: 1px solid var(--border);
+            background: #f9fafb;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .btn-day.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .source-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .btn-tab {
+            flex: 1;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            border: 1px solid var(--border);
+            background: #f9fafb;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .btn-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .search-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .food-list {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        .food-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .food-item:last-child {
+            border-bottom: none;
+        }
+
+        .food-tag {
+            font-size: 0.75rem;
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
+        .btn-add {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .data-table th, .data-table td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .data-table th {
+            background-color: #f9fafb;
+        }
+
+        .btn-delete {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .badge-surplus { background: #fef3c7; color: #b45309; }
+        .badge-deficit { background: #d1fae5; color: #047857; }
+        .badge-balance { background: #e0e7ff; color: #3730a3; }
+
+        .btn-clear {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            float: right;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Weekly Energy & Protein Tracker</h1>
+        <p>บันทึกและคำนวณโภชนาการรายวัน พร้อมสรุปผลรายสัปดาห์</p>
+    </header>
+
+    <div class="grid">
+        <!-- Section 1: Personal Target -->
+        <div class="card">
+            <h2>1. กำหนดเป้าหมายรายวัน</h2>
+            <form id="calc-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>เพศ</label>
+                        <select id="gender" class="form-control">
+                            <option value="male">ชาย</option>
+                            <option value="female">หญิง</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>อายุ (ปี)</label>
+                        <input type="number" id="age" class="form-control" value="25">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>น้ำหนัก (kg)</label>
+                        <input type="number" id="weight" class="form-control" value="70" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>ส่วนสูง (cm)</label>
+                        <input type="number" id="height" class="form-control" value="175">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>ระดับกิจกรรม</label>
+                    <select id="activity" class="form-control">
+                        <option value="1.2">นั่งทำงานอยู่กับที่ (~1.2g/kg)</option>
+                        <option value="1.375">ออกกำลังกายเบาๆ 1-3 วัน/สัปดาห์ (~1.4g/kg)</option>
+                        <option value="1.55" selected>ออกกำลังกายปานกลาง 3-5 วัน/สัปดาห์ (~1.6g/kg)</option>
+                        <option value="1.725">ออกกำลังกายหนัก 6-7 วัน/สัปดาห์ (~1.8g/kg)</option>
+                        <option value="1.9">นักกีฬา / เวทเทรนนิ่งหนัก (~2.0g/kg)</option>
+                    </select>
+                </div>
+            </form>
+
+            <div style="margin-top: 15px;">
+                <div class="stat-box">
+                    <span class="stat-title">เป้าหมายพลังงานต่อวัน (TDEE)</span>
+                    <span class="stat-value" id="tdee-val" style="color: var(--primary);">0 kcal</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-title">เป้าหมายโปรตีนต่อวัน</span>
+                    <span class="stat-value" id="protein-target-val" style="color: var(--protein-color);">0 g</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Food Selection -->
+        <div class="card">
+            <h2>2. เลือกเมนูอาหารเข้าสู่บันทึก</h2>
+            <div class="source-selector">
+                <button class="btn-tab active" id="tab-local" onclick="switchSource('local')">คลังเมนูอาหาร</button>
+                <button class="btn-tab" id="tab-online" onclick="switchSource('online')">ค้นหาออนไลน์</button>
+            </div>
+
+            <div id="local-controls">
+                <div class="search-row">
+                    <select id="category-filter" class="form-control" style="flex: 1;">
+                        <option value="all">ทุกหมวดหมู่</option>
+                        <option value="เมนูส่วนตัว">เมนูส่วนตัว</option>
+                        <option value="จานเดียว">อาหารจานเดียว</option>
+                        <option value="สุขภาพ">อาหารสุขภาพ</option>
+                    </select>
+                    <input type="text" id="food-search" class="form-control" style="flex: 1.5;" placeholder="ค้นชื่ออาหาร...">
+                </div>
+            </div>
+
+            <div id="online-controls" style="display: none;">
+                <div class="search-row">
+                    <input type="text" id="online-search" class="form-control" placeholder="ระบุชื่ออาหารภาษาไทย/อังกฤษ...">
+                    <button class="btn-add" style="padding: 8px 14px;" onclick="searchOnlineFood()">ค้นหา</button>
+                </div>
+            </div>
+
+            <div class="food-list" id="food-db-list"></div>
+
+            <h3 style="font-size: 0.9rem; margin-bottom: 6px;">กรอกรายการเอง</h3>
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <input type="text" id="custom-name" class="form-control" placeholder="ชื่อรายการ">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <input type="number" id="custom-cal" class="form-control" placeholder="kcal">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <input type="number" id="custom-protein" class="form-control" placeholder="โปรตีน g">
+                </div>
+            </div>
+            <button class="btn" id="btn-add-custom">เพิ่มในวันปัจจุบัน</button>
+        </div>
+
+        <!-- Section 3: Daily Log -->
+        <div class="card full-width">
+            <h2>3. บันทึกอาหารประจำวัน</h2>
+            
+            <label style="font-size:0.9rem; font-weight:bold; margin-bottom:8px; display:block;">เลือกวันที่ต้องการบันทึก:</label>
+            <div class="day-selector-container" id="day-buttons"></div>
+
+            <div class="grid" style="margin-bottom: 15px;">
+                <div class="stat-box">
+                    <span class="stat-title">พลังงานมื้อวัน<span id="current-day-label"></span></span>
+                    <span class="stat-value" id="summary-calories">0 / 0 kcal</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-title">โปรตีนมื้อวัน<span id="current-day-label-2"></span></span>
+                    <span class="stat-value" id="summary-protein" style="color: var(--protein-color);">0 / 0 g</span>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>รายการอาหาร</th>
+                        <th>พลังงาน (kcal)</th>
+                        <th>โปรตีน (g)</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="log-table-body"></tbody>
+            </table>
+        </div>
+
+        <!-- Section 4: Weekly Summary -->
+        <div class="card full-width">
+            <h2>
+                4. สรุปภาพรวมรายสัปดาห์ (Weekly Summary)
+                <button class="btn-clear" onclick="resetWeeklyData()">ล้างข้อมูลสัปดาห์นี้</button>
+            </h2>
+
+            <div class="grid" style="margin-bottom: 15px;">
+                <div class="stat-box">
+                    <span class="stat-title">พลังงานรวมทั้งสัปดาห์ / เป้าหมาย 7 วัน</span>
+                    <span class="stat-value" id="weekly-total-calories">0 / 0 kcal</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-title">โปรตีนรวมทั้งสัปดาห์ / เป้าหมาย 7 วัน</span>
+                    <span class="stat-value" id="weekly-total-protein" style="color: var(--protein-color);">0 / 0 g</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-title">เฉลี่ยต่อวัน (พลังงาน)</span>
+                    <span class="stat-value" id="weekly-avg-calories">0 kcal/วัน</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-title">เฉลี่ยต่อวัน (โปรตีน)</span>
+                    <span class="stat-value" id="weekly-avg-protein" style="color: var(--protein-color);">0 g/วัน</span>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>วัน</th>
+                        <th>จำนวนรายการ</th>
+                        <th>พลังงานรวม (kcal)</th>
+                        <th>โปรตีนรวม (g)</th>
+                        <th>สถานะพลังงาน</th>
+                    </tr>
+                </thead>
+                <tbody id="weekly-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const daysOfWeek = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+    let currentSelectedDay = "อาทิตย์";
+
+    // เมนูตั้งต้นตามที่ผู้ใช้เคยระบุ
+    const defaultWeeklyLogs = {
+        "อาทิตย์": [
+            { id: 1, name: "ข้าวสวย (1.5 ทัพพี / ~120g)", calories: 120, protein: 2.4 },
+            { id: 2, name: "หมูหวาน (4 ช้อนโต๊ะ / ~65g)", calories: 220, protein: 8.0 },
+            { id: 3, name: "ผักแกล้มผักสด", calories: 15, protein: 0.5 },
+            { id: 4, name: "น้ำยากะทิ (1 ช้อนโต๊ะ)", calories: 35, protein: 0.5 },
+            { id: 5, name: "ต้มไก่ใบมะขาม (เนื้อไก่ 3 ชิ้นเล็ก)", calories: 70, protein: 7.5 },
+            { id: 6, name: "เนื้อปลาเผา + ผักสด/น้ำจิ้ม (~250-300g)", calories: 390, protein: 61.0 },
+            { id: 7, name: "มันหวานญี่ปุ่นเผา (1/2 หัวเล็ก)", calories: 65, protein: 1.0 },
+            { id: 8, name: "กุ้งแชบ๊วย (2.5 ตัว)", calories: 50, protein: 9.5 }
+        ],
+        "จันทร์": [
+            { id: 9, name: "มันหวานญี่ปุ่นเผา (1 หัวเล็ก)", calories: 100, protein: 2.0 },
+            { id: 10, name: "กุ้งแชบ๊วยต้ม (5 ตัวใหญ่)", calories: 90, protein: 19.0 },
+            { id: 11, name: "ทูน่ากระป๋อง ในน้ำแร่/น้ำเกลือ", calories: 120, protein: 26.0 },
+            { id: 12, name: "ซาโมซ่าไส้กล้วย (2 ชิ้น)", calories: 260, protein: 3.0 },
+            { id: 13, name: "ข้าวสวย (2 ทัพพี)", calories: 160, protein: 3.2 },
+            { id: 14, name: "พะแนงหมู ตักเนื้อ ไม่ราดน้ำ", calories: 120, protein: 8.0 },
+            { id: 15, name: "ผัดผักน้ำมันหอยบร็อกโคลี ไม่ราดน้ำ", calories: 20, protein: 0.5 },
+            { id: 16, name: "ต้มยำไก่ (1 ถ้วยเล็ก)", calories: 100, protein: 12.0 },
+            { id: 17, name: "ยำถั่วพู (4 ช้อนโต๊ะ)", calories: 140, protein: 5.0 },
+            { id: 18, name: "ไข่ขาวต้ม (1/4 ฟอง)", calories: 5, protein: 1.0 },
+            { id: 19, name: "ตับนุ่มน้ำมันงา (~135g)", calories: 250, protein: 28.0 },
+            { id: 20, name: "เนื้อไก่ไม่หนัง (150g ต้ม/ย่าง/นึ่ง)", calories: 185, protein: 36.0 },
+            { id: 21, name: "ข้าวสวย ข้าวขาว (1/2 ถ้วย)", calories: 80, protein: 1.8 },
+            { id: 22, name: "เนื้อไก่ล้วนย่าง (1 ไม้)", calories: 60, protein: 9.0 },
+            { id: 23, name: "ลูกชิ้นปลานึ่ง (3 ลูก)", calories: 35, protein: 3.5 }
+        ],
+        "อังคาร": [
+            { id: 24, name: "ข้าวสวย ข้าวขาว (1.5 ทัพพี)", calories: 120, protein: 2.4 },
+            { id: 25, name: "หมูป่าผัดเผ็ด ตักเนื้อไม่ราดน้ำแกง", calories: 150, protein: 10.0 },
+            { id: 26, name: "ต้นอ่อนทานตะวันผัดน้ำมันมะกอก", calories: 65, protein: 1.5 }
+        ],
+        "พุธ": [], "พฤหัสบดี": [], "ศุกร์": [], "เสาร์": []
+    };
+
+    let weeklyLogs = JSON.parse(localStorage.getItem('weeklyLogs')) || defaultWeeklyLogs;
+
+    const localFoodDatabase = [
+        { name: "ข้าวสวย (1.5 ทัพพี / ~120g)", calories: 120, protein: 2.4, category: "เมนูส่วนตัว" },
+        { name: "เนื้อปลาเผา (~250-300g)", calories: 390, protein: 61.0, category: "เมนูส่วนตัว" },
+        { name: "มันหวานญี่ปุ่นเผา (1 หัวเล็ก)", calories: 100, protein: 2.0, category: "เมนูส่วนตัว" },
+        { name: "อกไก่ต้ม/นึ่ง (100g)", calories: 120, protein: 23.0, category: "สุขภาพ" },
+        { name: "ไข่ต้ม (1 ฟอง)", calories: 75, protein: 6.0, category: "สุขภาพ" },
+        { name: "ข้าวมันไก่", calories: 600, protein: 25.0, category: "จานเดียว" }
+    ];
+
+    let currentTDEE = 0;
+    let targetProtein = 0;
+
+    // Elements
+    const genderEl = document.getElementById('gender');
+    const ageEl = document.getElementById('age');
+    const weightEl = document.getElementById('weight');
+    const heightEl = document.getElementById('height');
+    const activityEl = document.getElementById('activity');
+
+    const tdeeValEl = document.getElementById('tdee-val');
+    const proteinTargetValEl = document.getElementById('protein-target-val');
+
+    const dayButtonsEl = document.getElementById('day-buttons');
+    const logTableBody = document.getElementById('log-table-body');
+    const weeklyTableBody = document.getElementById('weekly-table-body');
+
+    // สลับวัน
+    function initDayButtons() {
+        dayButtonsEl.innerHTML = '';
+        daysOfWeek.forEach(day => {
+            const btn = document.createElement('button');
+            btn.className = `btn-day ${day === currentSelectedDay ? 'active' : ''}`;
+            btn.textContent = `วัน${day}`;
+            btn.onclick = () => {
+                currentSelectedDay = day;
+                initDayButtons();
+                renderDailyLog();
+            };
+            dayButtonsEl.appendChild(btn);
+        });
+        document.getElementById('current-day-label').textContent = ` (${currentSelectedDay})`;
+        document.getElementById('current-day-label-2').textContent = ` (${currentSelectedDay})`;
+    }
+
+    // คำนวณ TDEE & Protein Target
+    function calculateEnergy() {
+        const weight = parseFloat(weightEl.value) || 0;
+        const height = parseFloat(heightEl.value) || 0;
+        const age = parseInt(ageEl.value) || 0;
+        const gender = genderEl.value;
+        const activity = parseFloat(activityEl.value);
+
+        if (weight <= 0 || height <= 0 || age <= 0) return;
+
+        let bmr = (10 * weight) + (6.25 * height) - (5 * age);
+        bmr = (gender === 'male') ? bmr + 5 : bmr - 161;
+
+        currentTDEE = bmr * activity;
+
+        let proteinRatio = 1.2;
+        if (activity >= 1.9) proteinRatio = 2.0;
+        else if (activity >= 1.725) proteinRatio = 1.8;
+        else if (activity >= 1.55) proteinRatio = 1.6;
+        else if (activity >= 1.375) proteinRatio = 1.4;
+
+        targetProtein = weight * proteinRatio;
+
+        tdeeValEl.textContent = `${Math.round(currentTDEE)} kcal`;
+        proteinTargetValEl.textContent = `${Math.round(targetProtein)} g`;
+
+        renderDailyLog();
+        renderWeeklySummary();
+    }
+
+    [genderEl, ageEl, weightEl, heightEl, activityEl].forEach(el => el.addEventListener('input', calculateEnergy));
+
+    // เพิ่มรายการอาหารลงในวันปัจจุบัน
+    function addFood(name, calories, protein) {
+        if (!weeklyLogs[currentSelectedDay]) weeklyLogs[currentSelectedDay] = [];
+        
+        weeklyLogs[currentSelectedDay].push({
+            id: Date.now(),
+            name,
+            calories: parseFloat(calories),
+            protein: parseFloat(protein || 0)
+        });
+
+        saveAndRefresh();
+    }
+
+    document.getElementById('btn-add-custom').onclick = () => {
+        const name = document.getElementById('custom-name').value.trim();
+        const cal = parseFloat(document.getElementById('custom-cal').value);
+        const pro = parseFloat(document.getElementById('custom-protein').value) || 0;
+
+        if (!name || isNaN(cal) || cal <= 0) {
+            alert('กรุณากรอกชื่ออาหารและค่าพลังงานให้ครบถ้วน');
+            return;
+        }
+
+        addFood(name, cal, pro);
+        document.getElementById('custom-name').value = '';
+        document.getElementById('custom-cal').value = '';
+        document.getElementById('custom-protein').value = '';
+    };
+
+    function deleteFood(id) {
+        weeklyLogs[currentSelectedDay] = weeklyLogs[currentSelectedDay].filter(item => item.id !== id);
+        saveAndRefresh();
+    }
+
+    function saveAndRefresh() {
+        localStorage.setItem('weeklyLogs', JSON.stringify(weeklyLogs));
+        renderDailyLog();
+        renderWeeklySummary();
+    }
+
+    // แสดงตารางบันทึกประจำวัน
+    function renderDailyLog() {
+        const logs = weeklyLogs[currentSelectedDay] || [];
+        logTableBody.innerHTML = '';
+
+        let dayCal = 0;
+        let dayPro = 0;
+
+        if (logs.length === 0) {
+            logTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">ไม่มีรายการบันทึกในวันนี้</td></tr>';
+        } else {
+            logs.forEach((item, idx) => {
+                dayCal += item.calories;
+                dayPro += item.protein;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${item.name}</td>
+                    <td>${item.calories}</td>
+                    <td>${item.protein}</td>
+                    <td><button class="btn-delete" onclick="deleteFood(${item.id})">ลบ</button></td>
+                `;
+                logTableBody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('summary-calories').textContent = `${Math.round(dayCal)} / ${Math.round(currentTDEE)} kcal`;
+        document.getElementById('summary-protein').textContent = `${Math.round(dayPro * 10) / 10} / ${Math.round(targetProtein)} g`;
+    }
+
+    // แสดงสรุปผลประจำสัปดาห์
+    function renderWeeklySummary() {
+        weeklyTableBody.innerHTML = '';
+        
+        let totalCal = 0;
+        let totalPro = 0;
+        let activeDaysCount = 0;
+
+        daysOfWeek.forEach(day => {
+            const logs = weeklyLogs[day] || [];
+            const dayCal = logs.reduce((sum, item) => sum + item.calories, 0);
+            const dayPro = logs.reduce((sum, item) => sum + item.protein, 0);
+
+            if (logs.length > 0) activeDaysCount++;
+
+            totalCal += dayCal;
+            totalPro += dayPro;
+
+            let diff = dayCal - currentTDEE;
+            let statusText = '-';
+            if (logs.length > 0) {
+                if (diff > 100) statusText = `<span style="color:var(--warning)">เกิน +${Math.round(diff)} kcal</span>`;
+                else if (diff < -100) statusText = `<span style="color:var(--success)">ขาด ${Math.round(diff)} kcal</span>`;
+                else statusText = `<span style="color:var(--primary)">พอดีเป้าหมาย</span>`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><b>วัน${day}</b></td>
+                <td>${logs.length} รายการ</td>
+                <td>${Math.round(dayCal)} kcal</td>
+                <td>${Math.round(dayPro * 10) / 10} g</td>
+                <td>${statusText}</td>
+            `;
+            weeklyTableBody.appendChild(tr);
+        });
+
+        const weeklyTargetCal = currentTDEE * 7;
+        const weeklyTargetPro = targetProtein * 7;
+        const avgCal = activeDaysCount > 0 ? totalCal / activeDaysCount : 0;
+        const avgPro = activeDaysCount > 0 ? totalPro / activeDaysCount : 0;
+
+        document.getElementById('weekly-total-calories').textContent = `${Math.round(totalCal)} / ${Math.round(weeklyTargetCal)} kcal`;
+        document.getElementById('weekly-total-protein').textContent = `${Math.round(totalPro * 10) / 10} / ${Math.round(weeklyTargetPro)} g`;
+        document.getElementById('weekly-avg-calories').textContent = `${Math.round(avgCal)} kcal/วัน (${activeDaysCount} วัน)`;
+        document.getElementById('weekly-avg-protein').textContent = `${Math.round(avgPro * 10) / 10} g/วัน (${activeDaysCount} วัน)`;
+    }
+
+    function resetWeeklyData() {
+        if (confirm('คุณต้องการล้างข้อมูลบันทึกอาหารทั้งหมดในสัปดาห์นี้ใช่หรือไม่?')) {
+            weeklyLogs = { "อาทิตย์": [], "จันทร์": [], "อังคาร": [], "พุธ": [], "พฤหัสบดี": [], "ศุกร์": [], "เสาร์": [] };
+            saveAndRefresh();
+        }
+    }
+
+    // สลับคลังอาหาร Local/Online
+    function switchSource(source) {
+        document.getElementById('tab-local').classList.toggle('active', source === 'local');
+        document.getElementById('tab-online').classList.toggle('active', source === 'online');
+        document.getElementById('local-controls').style.display = source === 'local' ? 'block' : 'none';
+        document.getElementById('online-controls').style.display = source === 'online' ? 'block' : 'none';
+
+        if (source === 'local') renderLocalFoodDatabase();
+        else document.getElementById('food-db-list').innerHTML = '<div style="padding:15px; text-align:center; color:var(--text-muted);">ค้นหาผ่าน Open Food Facts API</div>';
+    }
+
+    function renderLocalFoodDatabase() {
+        const search = document.getElementById('food-search').value.toLowerCase();
+        const category = document.getElementById('category-filter').value;
+
+        const filtered = localFoodDatabase.filter(item => {
+            const matchName = item.name.toLowerCase().includes(search);
+            const matchCategory = (category === 'all' || item.category === category);
+            return matchName && matchCategory;
+        });
+
+        const listEl = document.getElementById('food-db-list');
+        listEl.innerHTML = '';
+        filtered.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'food-item';
+            div.innerHTML = `
+                <div>
+                    <span>${item.name}</span>
+                    <small style="color:#6b7280; display:block;">${item.calories} kcal | โปรตีน ${item.protein}g</small>
+                </div>
+                <button class="btn-add" onclick="addFood('${item.name.replace(/'/g, "\\'")}', ${item.calories}, ${item.protein})">+ เพิ่ม</button>
+            `;
+            listEl.appendChild(div);
+        });
+    }
+
+    document.getElementById('food-search').addEventListener('input', renderLocalFoodDatabase);
+    document.getElementById('category-filter').addEventListener('change', renderLocalFoodDatabase);
+
+    // ค้นหาออนไลน์ API
+    async function searchOnlineFood() {
+        const query = document.getElementById('online-search').value.trim();
+        const listEl = document.getElementById('food-db-list');
+        if (!query) return;
+
+        listEl.innerHTML = '<div style="padding:15px; text-align:center;">กำลังค้นหา...</div>';
+
+        try {
+            const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=10`);
+            const data = await response.json();
+            listEl.innerHTML = '';
+
+            if (!data.products || data.products.length === 0) {
+                listEl.innerHTML = '<div style="padding:15px; text-align:center;">ไม่พบข้อมูล</div>';
+                return;
+            }
+
+            data.products.forEach(product => {
+                const name = product.product_name_th || product.product_name || 'ไม่ระบุชื่อ';
+                const cal = Math.round(product.nutriments['energy-kcal_100g'] || 0);
+                const pro = Math.round(product.nutriments['proteins_100g'] || 0);
+
+                if (cal > 0) {
+                    const div = document.createElement('div');
+                    div.className = 'food-item';
+                    div.innerHTML = `
+                        <div>
+                            <span>${name}</span>
+                            <small style="color:#6b7280; display:block;">~${cal} kcal | โปรตีน ~${pro}g (ต่อ 100g)</small>
+                        </div>
+                        <button class="btn-add" onclick="addFood('${name.replace(/'/g, "\\'")}', ${cal}, ${pro})">+ เพิ่ม</button>
+                    `;
+                    listEl.appendChild(div);
+                }
+            });
+        } catch (err) {
+            listEl.innerHTML = '<div style="padding:15px; text-align:center; color:var(--danger);">เกิดข้อผิดพลาดในการดึงข้อมูล</div>';
+        }
+    }
+
+    // เริ่มต้นระบบ
+    initDayButtons();
+    calculateEnergy();
+    renderLocalFoodDatabase();
+</script>
+
+</body>
+</html>
