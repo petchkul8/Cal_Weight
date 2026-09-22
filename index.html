@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบคำนวณและบันทึกพลังงาน + โปรตีนประจำสัปดาห์</title>
+    <title>ระบบคำนวณและบันทึกโภชนาการประจำสัปดาห์ & รายเดือน</title>
+    <!-- Chart.js สำหรับวาดกราฟรายเดือน -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #4f46e5;
@@ -268,18 +270,6 @@
             cursor: pointer;
         }
 
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        .badge-surplus { background: #fef3c7; color: #b45309; }
-        .badge-deficit { background: #d1fae5; color: #047857; }
-        .badge-balance { background: #e0e7ff; color: #3730a3; }
-
         .btn-clear {
             background: #ef4444;
             color: white;
@@ -290,14 +280,21 @@
             cursor: pointer;
             float: right;
         }
+
+        .chart-container {
+            position: relative;
+            height: 320px;
+            width: 100%;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>Weekly Energy & Protein Tracker</h1>
-        <p>บันทึกและคำนวณโภชนาการรายวัน พร้อมสรุปผลรายสัปดาห์</p>
+        <h1>Daily & Monthly Nutrition Tracker</h1>
+        <p>บันทึกโภชนาการประจำวัน สรุปผลรายสัปดาห์ และดูแนวโน้มรายเดือน</p>
     </header>
 
     <div class="grid">
@@ -358,8 +355,8 @@
         <div class="card">
             <h2>2. เลือกเมนูอาหารเข้าสู่บันทึก</h2>
             <div class="source-selector">
-                <button class="btn-tab active" id="tab-local" onclick="switchSource('local')">คลังเมนูอาหาร</button>
-                <button class="btn-tab" id="tab-online" onclick="switchSource('online')">ค้นหาออนไลน์</button>
+                <button class="btn-tab active" id="tab-local" onclick="switchSource('local')">คลังอาหารไทย (50+ เมนู)</button>
+                <button class="btn-tab" id="tab-online" onclick="switchSource('online')">ค้นหา API ออนไลน์</button>
             </div>
 
             <div id="local-controls">
@@ -367,16 +364,19 @@
                     <select id="category-filter" class="form-control" style="flex: 1;">
                         <option value="all">ทุกหมวดหมู่</option>
                         <option value="เมนูส่วนตัว">เมนูส่วนตัว</option>
-                        <option value="จานเดียว">อาหารจานเดียว</option>
-                        <option value="สุขภาพ">อาหารสุขภาพ</option>
+                        <option value="อาหารไทยจานเดียว">อาหารไทยจานเดียว</option>
+                        <option value="ต้ม/แกง/ยำ">ต้ม / แกง / ยำ</option>
+                        <option value="ผัด/ทอด">ผัด / ทอด / ย่าง</option>
+                        <option value="สุขภาพ">อาหารสุขภาพ / คลีน</option>
+                        <option value="ของหวาน/เครื่องดื่ม">ขนม / เครื่องดื่ม</option>
                     </select>
-                    <input type="text" id="food-search" class="form-control" style="flex: 1.5;" placeholder="ค้นชื่ออาหาร...">
+                    <input type="text" id="food-search" class="form-control" style="flex: 1.5;" placeholder="ค้นชื่ออาหารไทย...">
                 </div>
             </div>
 
             <div id="online-controls" style="display: none;">
                 <div class="search-row">
-                    <input type="text" id="online-search" class="form-control" placeholder="ระบุชื่ออาหารภาษาไทย/อังกฤษ...">
+                    <input type="text" id="online-search" class="form-control" placeholder="ระบุชื่อสินค้าภาษาไทย/อังกฤษ...">
                     <button class="btn-add" style="padding: 8px 14px;" onclick="searchOnlineFood()">ค้นหา</button>
                 </div>
             </div>
@@ -469,14 +469,24 @@
                 <tbody id="weekly-table-body"></tbody>
             </table>
         </div>
+
+        <!-- Section 5: Monthly Chart -->
+        <div class="card full-width">
+            <h2>5. กราฟแนวโน้มรายเดือน (Monthly Chart - 30 วันย้อนหลัง)</h2>
+            <div class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <script>
     const daysOfWeek = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
     let currentSelectedDay = "อาทิตย์";
+    let chartInstance = null;
 
-    // เมนูตั้งต้นตามที่ผู้ใช้เคยระบุ
+    // ข้อมูลเริ่มต้น
     const defaultWeeklyLogs = {
         "อาทิตย์": [
             { id: 1, name: "ข้าวสวย (1.5 ทัพพี / ~120g)", calories: 120, protein: 2.4 },
@@ -514,14 +524,72 @@
     };
 
     let weeklyLogs = JSON.parse(localStorage.getItem('weeklyLogs')) || defaultWeeklyLogs;
+    let monthlyHistory = JSON.parse(localStorage.getItem('monthlyHistory')) || {};
 
+    // ฐานข้อมูลอาหารไทยครอบคลุมกว่า 50+ รายการ
     const localFoodDatabase = [
+        // เมนูส่วนตัว
         { name: "ข้าวสวย (1.5 ทัพพี / ~120g)", calories: 120, protein: 2.4, category: "เมนูส่วนตัว" },
         { name: "เนื้อปลาเผา (~250-300g)", calories: 390, protein: 61.0, category: "เมนูส่วนตัว" },
         { name: "มันหวานญี่ปุ่นเผา (1 หัวเล็ก)", calories: 100, protein: 2.0, category: "เมนูส่วนตัว" },
+        { name: "กุ้งแชบ๊วยต้ม (5 ตัวใหญ่)", calories: 90, protein: 19.0, category: "เมนูส่วนตัว" },
+        { name: "ตับนุ่มน้ำมันงา (~135g)", calories: 250, protein: 28.0, category: "เมนูส่วนตัว" },
+
+        // อาหารไทยจานเดียว
+        { name: "ข้าวผัดกะเพราไก่ ไข่ดาว", calories: 620, protein: 26.0, category: "อาหารไทยจานเดียว" },
+        { name: "ข้าวผัดกะเพราหมูสับ", calories: 580, protein: 22.0, category: "อาหารไทยจานเดียว" },
+        { name: "ข้าวมันไก่ (เนื้ออก)", calories: 530, protein: 28.0, category: "อาหารไทยจานเดียว" },
+        { name: "ข้าวมันไก่ทอด", calories: 690, protein: 20.0, category: "อาหารไทยจานเดียว" },
+        { name: "ข้าวขาหมู (เนื้อล้วน)", calories: 520, protein: 26.0, category: "อาหารไทยจานเดียว" },
+        { name: "ข้าวหมูแดง", calories: 540, protein: 20.0, category: "อาหารไทยจานเดียว" },
+        { name: "ข้าวหมูกรอบ", calories: 680, protein: 18.0, category: "อาหารไทยจานเดียว" },
+        { name: "ข้าวหน้าเป็ด", calories: 490, protein: 22.0, category: "อาหารไทยจานเดียว" },
+        { name: "ผัดไทยกุ้งสด", calories: 580, protein: 18.0, category: "อาหารไทยจานเดียว" },
+        { name: "ผัดซีอิ๊วหมู", calories: 600, protein: 21.0, category: "อาหารไทยจานเดียว" },
+        { name: "ก๋วยเตี๋ยวเรือน้ำตกหมู", calories: 380, protein: 20.0, category: "อาหารไทยจานเดียว" },
+        { name: "ก๋วยเตี๋ยวต้มยำสุโขทัย", calories: 410, protein: 18.0, category: "อาหารไทยจานเดียว" },
+        { name: "ราดหน้าหมูหมัก", calories: 420, protein: 19.0, category: "อาหารไทยจานเดียว" },
+        { name: "ขนมจีนน้ำยาป่า", calories: 280, protein: 12.0, category: "อาหารไทยจานเดียว" },
+        { name: "ขนมจีนน้ำยากะทิ", calories: 420, protein: 14.0, category: "อาหารไทยจานเดียว" },
+
+        // ต้ม / แกง / ยำ
+        { name: "ต้มยำกุ้งน้ำใส", calories: 120, protein: 16.0, category: "ต้ม/แกง/ยำ" },
+        { name: "ต้มยำกุ้งน้ำข้น", calories: 220, protein: 16.0, category: "ต้ม/แกง/ยำ" },
+        { name: "แกงเขียวหวานไก่", calories: 240, protein: 14.0, category: "ต้ม/แกง/ยำ" },
+        { name: "พะแนงหมู", calories: 290, protein: 16.0, category: "ต้ม/แกง/ยำ" },
+        { name: "แกงส้มกุ้งผักรวม", calories: 130, protein: 14.0, category: "ต้ม/แกง/ยำ" },
+        { name: "ต้มข่าไก่", calories: 210, protein: 13.0, category: "ต้ม/แกง/ยำ" },
+        { name: "แกงจืดเต้าหู้หมูสับ", calories: 120, protein: 11.0, category: "ต้ม/แกง/ยำ" },
+        { name: "แกงเลียงกุ้งสด", calories: 110, protein: 12.0, category: "ต้ม/แกง/ยำ" },
+        { name: "ส้มตำไทย", calories: 120, protein: 3.0, category: "ต้ม/แกง/ยำ" },
+        { name: "ส้มตำปูปลาร้า", calories: 90, protein: 4.0, category: "ต้ม/แกง/ยำ" },
+        { name: "ลาบหมู", calories: 180, protein: 18.0, category: "ต้ม/แกง/ยำ" },
+        { name: "น้ำตกเนื้อ/หมู", calories: 190, protein: 19.0, category: "ต้ม/แกง/ยำ" },
+        { name: "ยำวุ้นเส้นหมูสับกุ้ง", calories: 220, protein: 15.0, category: "ต้ม/แกง/ยำ" },
+
+        // ผัด / ทอด / ย่าง
+        { name: "ไก่ย่าง (สะโพก 1 ชิ้น)", calories: 210, protein: 24.0, category: "ผัด/ทอด" },
+        { name: "หมูปิ้ง (1 ไม้)", calories: 120, protein: 7.0, category: "ผัด/ทอด" },
+        { name: "ไข่เจียวหมูสับ (1 ฟอง)", calories: 240, protein: 10.0, category: "ผัด/ทอด" },
+        { name: "ไข่ดาว", calories: 110, protein: 6.0, category: "ผัด/ทอด" },
+        { name: "ผัดคะน้าหมูกรอบ", calories: 420, protein: 15.0, category: "ผัด/ทอด" },
+        { name: "ผัดผักบุ้งไฟแดง", calories: 180, protein: 4.0, category: "ผัด/ทอด" },
+        { name: "ปลาชะโด/ปลาดุกทอดขมิ้น", calories: 260, protein: 22.0, category: "ผัด/ทอด" },
+
+        // สุขภาพ
         { name: "อกไก่ต้ม/นึ่ง (100g)", calories: 120, protein: 23.0, category: "สุขภาพ" },
         { name: "ไข่ต้ม (1 ฟอง)", calories: 75, protein: 6.0, category: "สุขภาพ" },
-        { name: "ข้าวมันไก่", calories: 600, protein: 25.0, category: "จานเดียว" }
+        { name: "ไข่ขาวต้ม (1 ฟอง)", calories: 17, protein: 3.6, category: "สุขภาพ" },
+        { name: "สลัดโรลปูอัด/ทูน่า (4 ชิ้น)", calories: 180, protein: 8.0, category: "สุขภาพ" },
+        { name: "เต้าหู้นึ่งนิ่ม (100g)", calories: 70, protein: 8.0, category: "สุขภาพ" },
+
+        // ขนม / เครื่องดื่ม
+        { name: "ข้าวเหนียวมะม่วง (1 จาน)", calories: 450, protein: 5.0, category: "ของหวาน/เครื่องดื่ม" },
+        { name: "ลอดช่องน้ำกะทิ", calories: 220, protein: 2.0, category: "ของหวาน/เครื่องดื่ม" },
+        { name: "เฉาก๊วยชากังราว", calories: 140, protein: 1.0, category: "ของหวาน/เครื่องดื่ม" },
+        { name: "ชาไทยเย็น (หวานปกติ)", calories: 280, protein: 4.0, category: "ของหวาน/เครื่องดื่ม" },
+        { name: "ชาเขียวนมเย็น", calories: 290, protein: 4.0, category: "ของหวาน/เครื่องดื่ม" },
+        { name: "อเมริกาโน่เย็น (ไม่หวาน)", calories: 15, protein: 0.5, category: "ของหวาน/เครื่องดื่ม" }
     ];
 
     let currentTDEE = 0;
@@ -541,7 +609,6 @@
     const logTableBody = document.getElementById('log-table-body');
     const weeklyTableBody = document.getElementById('weekly-table-body');
 
-    // สลับวัน
     function initDayButtons() {
         dayButtonsEl.innerHTML = '';
         daysOfWeek.forEach(day => {
@@ -559,7 +626,6 @@
         document.getElementById('current-day-label-2').textContent = ` (${currentSelectedDay})`;
     }
 
-    // คำนวณ TDEE & Protein Target
     function calculateEnergy() {
         const weight = parseFloat(weightEl.value) || 0;
         const height = parseFloat(heightEl.value) || 0;
@@ -587,11 +653,11 @@
 
         renderDailyLog();
         renderWeeklySummary();
+        updateMonthlyChart();
     }
 
     [genderEl, ageEl, weightEl, heightEl, activityEl].forEach(el => el.addEventListener('input', calculateEnergy));
 
-    // เพิ่มรายการอาหารลงในวันปัจจุบัน
     function addFood(name, calories, protein) {
         if (!weeklyLogs[currentSelectedDay]) weeklyLogs[currentSelectedDay] = [];
         
@@ -628,11 +694,21 @@
 
     function saveAndRefresh() {
         localStorage.setItem('weeklyLogs', JSON.stringify(weeklyLogs));
+        
+        // อัปเดตข้อมูลย้อนหลังประจำวัน
+        const todayStr = new Date().toISOString().split('T')[0];
+        const logs = weeklyLogs[currentSelectedDay] || [];
+        const dayCal = logs.reduce((sum, i) => sum + i.calories, 0);
+        const dayPro = logs.reduce((sum, i) => sum + i.protein, 0);
+
+        monthlyHistory[todayStr] = { calories: dayCal, protein: dayPro };
+        localStorage.setItem('monthlyHistory', JSON.stringify(monthlyHistory));
+
         renderDailyLog();
         renderWeeklySummary();
+        updateMonthlyChart();
     }
 
-    // แสดงตารางบันทึกประจำวัน
     function renderDailyLog() {
         const logs = weeklyLogs[currentSelectedDay] || [];
         logTableBody.innerHTML = '';
@@ -663,7 +739,6 @@
         document.getElementById('summary-protein').textContent = `${Math.round(dayPro * 10) / 10} / ${Math.round(targetProtein)} g`;
     }
 
-    // แสดงสรุปผลประจำสัปดาห์
     function renderWeeklySummary() {
         weeklyTableBody.innerHTML = '';
         
@@ -711,6 +786,93 @@
         document.getElementById('weekly-avg-protein').textContent = `${Math.round(avgPro * 10) / 10} g/วัน (${activeDaysCount} วัน)`;
     }
 
+    // กราฟรายเดือน Chart.js
+    function updateMonthlyChart() {
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        
+        // สร้างรายการ 30 วันย้อนหลัง
+        const labels = [];
+        const calData = [];
+        const proData = [];
+        const targetCalData = [];
+
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const shortLabel = `${d.getDate()}/${d.getMonth()+1}`;
+            
+            labels.push(shortLabel);
+            const record = monthlyHistory[dateStr] || { calories: 0, protein: 0 };
+            calData.push(record.calories);
+            proData.push(record.protein);
+            targetCalData.push(Math.round(currentTDEE));
+        }
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'พลังงานที่ได้รับ (kcal)',
+                        data: calData,
+                        backgroundColor: 'rgba(79, 70, 229, 0.7)',
+                        borderColor: '#4f46e5',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'เป้าหมาย TDEE (kcal)',
+                        data: targetCalData,
+                        type: 'line',
+                        borderColor: '#ef4444',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'โปรตีนที่ได้รับ (g)',
+                        data: proData,
+                        type: 'line',
+                        borderColor: '#0284c7',
+                        backgroundColor: '#0284c7',
+                        borderWidth: 2,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { font: { size: 10 } }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'พลังงาน (kcal)' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: 'โปรตีน (g)' }
+                    }
+                }
+            }
+        });
+    }
+
     function resetWeeklyData() {
         if (confirm('คุณต้องการล้างข้อมูลบันทึกอาหารทั้งหมดในสัปดาห์นี้ใช่หรือไม่?')) {
             weeklyLogs = { "อาทิตย์": [], "จันทร์": [], "อังคาร": [], "พุธ": [], "พฤหัสบดี": [], "ศุกร์": [], "เสาร์": [] };
@@ -718,7 +880,6 @@
         }
     }
 
-    // สลับคลังอาหาร Local/Online
     function switchSource(source) {
         document.getElementById('tab-local').classList.toggle('active', source === 'local');
         document.getElementById('tab-online').classList.toggle('active', source === 'online');
@@ -726,7 +887,7 @@
         document.getElementById('online-controls').style.display = source === 'online' ? 'block' : 'none';
 
         if (source === 'local') renderLocalFoodDatabase();
-        else document.getElementById('food-db-list').innerHTML = '<div style="padding:15px; text-align:center; color:var(--text-muted);">ค้นหาผ่าน Open Food Facts API</div>';
+        else document.getElementById('food-db-list').innerHTML = '<div style="padding:15px; text-align:center; color:var(--text-muted);">พิมพ์ชื่อสินค้า ค้นหาผ่าน Open Food Facts API</div>';
     }
 
     function renderLocalFoodDatabase() {
@@ -741,12 +902,19 @@
 
         const listEl = document.getElementById('food-db-list');
         listEl.innerHTML = '';
+        
+        if (filtered.length === 0) {
+            listEl.innerHTML = '<div style="padding:15px; text-align:center; color:var(--text-muted);">ไม่พบเมนูอาหารที่ค้นหา</div>';
+            return;
+        }
+
         filtered.forEach(item => {
             const div = document.createElement('div');
             div.className = 'food-item';
             div.innerHTML = `
                 <div>
                     <span>${item.name}</span>
+                    <span class="food-tag">${item.category}</span>
                     <small style="color:#6b7280; display:block;">${item.calories} kcal | โปรตีน ${item.protein}g</small>
                 </div>
                 <button class="btn-add" onclick="addFood('${item.name.replace(/'/g, "\\'")}', ${item.calories}, ${item.protein})">+ เพิ่ม</button>
@@ -758,7 +926,6 @@
     document.getElementById('food-search').addEventListener('input', renderLocalFoodDatabase);
     document.getElementById('category-filter').addEventListener('change', renderLocalFoodDatabase);
 
-    // ค้นหาออนไลน์ API
     async function searchOnlineFood() {
         const query = document.getElementById('online-search').value.trim();
         const listEl = document.getElementById('food-db-list');
@@ -767,7 +934,7 @@
         listEl.innerHTML = '<div style="padding:15px; text-align:center;">กำลังค้นหา...</div>';
 
         try {
-            const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=10`);
+            const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=12`);
             const data = await response.json();
             listEl.innerHTML = '';
 
